@@ -5,7 +5,7 @@ export default function AppLayout({ children }) {
 
   const navItems = [
     { name: "Dashboard", path: "/dashboard" },
-    { name: "Architect AI", path: "/chat" },
+    { name: "Architect AI", path: "/architect-ai" },
     { name: "Prospects", path: "/prospects" },
     { name: "Newsletters", path: "/newsletters" },
     { name: "Systems Setup", path: "/systems" },
