@@ -1,100 +1,107 @@
-import { createClient } from "@supabase/supabase-js";
+import { db } from "bolt:database";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.warn("Supabase env vars missing. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-export default async function handler(req, res) {
+export const GET = async (req) => {
   try {
-    // 🟢 LIST PROSPECTS
-    if (req.method === "GET") {
-      const { data, error } = await supabase
-        .from("prospects")
-        .select("*")
-        .order("created_at", { ascending: false });
+    const { data, error } = await db
+      .from("prospects")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      return res.status(200).json({ prospects: data || [] });
-    }
-
-    // 🟢 CREATE PROSPECT
-    if (req.method === "POST") {
-      const body = req.body || {};
-      const {
-        business_name,
-        contact_name,
-        email,
-        phone,
-        niche,
-        city,
-        state,
-        website,
-        source,
-        notes,
-      } = body;
-
-      if (!business_name) {
-        return res.status(400).json({ error: "business_name is required" });
-      }
-
-      const { data, error } = await supabase
-        .from("prospects")
-        .insert([
-          {
-            business_name,
-            contact_name,
-            email,
-            phone,
-            niche,
-            city,
-            state,
-            website,
-            source: source || "manual",
-            status: "new",
-            notes: notes || "",
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return res.status(201).json({ prospect: data });
-    }
-
-    // 🟢 UPDATE STATUS / NOTES
-    if (req.method === "PUT") {
-      const body = req.body || {};
-      const { id, status, notes } = body;
-
-      if (!id) {
-        return res.status(400).json({ error: "id is required for update" });
-      }
-
-      const { data, error } = await supabase
-        .from("prospects")
-        .update({
-          ...(status && { status }),
-          ...(notes !== undefined && { notes }),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return res.status(200).json({ prospect: data });
-    }
-
-    return res.status(405).json({ error: "Method not allowed" });
+    if (error) throw error;
+    return Response.json({ prospects: data || [] });
   } catch (err) {
-    console.error("Prospects handler error:", err);
-    return res
-      .status(500)
-      .json({ error: "Server error", details: err.message });
+    console.error("Prospects fetch error:", err);
+    return Response.json(
+      { error: "Failed to fetch prospects", details: err.message },
+      { status: 500 }
+    );
   }
-}
+};
+
+export const POST = async (req) => {
+  try {
+    const body = await req.json();
+    const {
+      business_name,
+      contact_name,
+      email,
+      phone,
+      niche,
+      city,
+      state,
+      website,
+      source,
+      notes,
+    } = body;
+
+    if (!business_name) {
+      return Response.json(
+        { error: "business_name is required" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await db
+      .from("prospects")
+      .insert([
+        {
+          business_name,
+          contact_name,
+          email,
+          phone,
+          niche,
+          city,
+          state,
+          website,
+          source: source || "manual",
+          status: "new",
+          notes: notes || "",
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return Response.json({ prospect: data }, { status: 201 });
+  } catch (err) {
+    console.error("Prospects create error:", err);
+    return Response.json(
+      { error: "Failed to create prospect", details: err.message },
+      { status: 500 }
+    );
+  }
+};
+
+export const PUT = async (req) => {
+  try {
+    const body = await req.json();
+    const { id, status, notes } = body;
+
+    if (!id) {
+      return Response.json(
+        { error: "id is required for update" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await db
+      .from("prospects")
+      .update({
+        ...(status && { status }),
+        ...(notes !== undefined && { notes }),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return Response.json({ prospect: data });
+  } catch (err) {
+    console.error("Prospects update error:", err);
+    return Response.json(
+      { error: "Failed to update prospect", details: err.message },
+      { status: 500 }
+    );
+  }
+};
