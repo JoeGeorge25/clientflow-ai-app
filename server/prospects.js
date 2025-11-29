@@ -4,13 +4,14 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn("Supabase environment variables are missing");
+  console.warn("Supabase env vars missing. Check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
   try {
+    // 🟢 LIST PROSPECTS
     if (req.method === "GET") {
       const { data, error } = await supabase
         .from("prospects")
@@ -21,6 +22,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ prospects: data || [] });
     }
 
+    // 🟢 CREATE PROSPECT
     if (req.method === "POST") {
       const body = req.body || {};
       const {
@@ -64,6 +66,7 @@ export default async function handler(req, res) {
       return res.status(201).json({ prospect: data });
     }
 
+    // 🟢 UPDATE STATUS / NOTES
     if (req.method === "PUT") {
       const body = req.body || {};
       const { id, status, notes } = body;
@@ -75,8 +78,8 @@ export default async function handler(req, res) {
       const { data, error } = await supabase
         .from("prospects")
         .update({
-          status,
-          notes,
+          ...(status && { status }),
+          ...(notes !== undefined && { notes }),
           updated_at: new Date().toISOString(),
         })
         .eq("id", id)
