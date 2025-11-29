@@ -1,68 +1,66 @@
-import { Link, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+
+const base =
+  "block px-4 py-2 rounded-md text-sm font-medium transition-colors";
+const active = "bg-slate-800 text-white";
+const inactive = "text-slate-300 hover:bg-slate-700/60";
 
 export default function AppLayout({ children }) {
-  const location = useLocation();
-
-  const navItems = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Architect AI", path: "/architect-ai" },
-    { name: "Prospects", path: "/prospects" },
-    { name: "Newsletters", path: "/newsletters" },
-    { name: "Systems Setup", path: "/systems" },
-  ];
-
   return (
-    <div style={{
-      display: "flex",
-      minHeight: "100vh",
-      background: "#0f172a",
-      color: "#e2e8f0",
-      fontFamily: "Inter, sans-serif",
-    }}>
+    <div className="min-h-screen flex bg-slate-950 text-slate-100">
+      <aside className="w-64 bg-slate-900 border-r border-slate-800 p-4 flex flex-col">
+        <div className="mb-8">
+          <h1 className="text-xl font-semibold">ClientFlow AI</h1>
+          <p className="text-xs text-slate-400">
+            Local Newsletter Agency System
+          </p>
+        </div>
 
-      {/* Sidebar */}
-      <aside style={{
-        width: "220px",
-        background: "#1e293b",
-        padding: "20px",
-        borderRight: "1px solid #334155"
-      }}>
-        <h2 style={{ marginBottom: "20px", fontSize: "18px", fontWeight: 600 }}>
-          ClientFlow AI
-        </h2>
-
-        <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {navItems.map(item => {
-            const active = location.pathname === item.path;
-            return (
-              <Link key={item.path} to={item.path} style={{ textDecoration: "none" }}>
-                <div
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: "6px",
-                    background: active ? "#334155" : "transparent",
-                    color: active ? "#fff" : "#cbd5e1",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    transition: "0.2s",
-                  }}
-                >
-                  {item.name}
-                </div>
-              </Link>
-            );
-          })}
+        <nav className="space-y-2 flex-1">
+          <NavLink
+            to="/dashboard"
+            className={({ isActive }) =>
+              `${base} ${isActive ? active : inactive}`
+            }
+          >
+            Dashboard
+          </NavLink>
+          <NavLink
+            to="/architect-ai"
+            className={({ isActive }) =>
+              `${base} ${isActive ? active : inactive}`
+            }
+          >
+            Architect AI
+          </NavLink>
+          <NavLink
+            to="/prospects"
+            className={({ isActive }) =>
+              `${base} ${isActive ? active : inactive}`
+            }
+          >
+            Prospects
+          </NavLink>
+          <NavLink
+            to="/newsletters"
+            className={({ isActive }) =>
+              `${base} ${isActive ? active : inactive}`
+            }
+          >
+            Newsletters
+          </NavLink>
+          <NavLink
+            to="/systems"
+            className={({ isActive }) =>
+              `${base} ${isActive ? active : inactive}`
+            }
+          >
+            Systems Setup
+          </NavLink>
         </nav>
       </aside>
 
-      {/* Main Content */}
-      <main style={{
-        flex: 1,
-        padding: "30px",
-        overflowY: "auto"
-      }}>
-        {children}
-      </main>
+      <main className="flex-1 bg-slate-950 p-6 overflow-auto">{children}</main>
     </div>
   );
 }
