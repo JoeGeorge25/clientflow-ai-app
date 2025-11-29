@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import AppLayout from "../components/AppLayout";
 
 export default function Prospects() {
   const [prospects, setProspects] = useState([]);
@@ -52,8 +53,9 @@ export default function Prospects() {
   }
 
   return (
-    <div>
-      <h1 style={{ fontSize: "20px", marginBottom: "8px" }}>Prospects</h1>
+    <AppLayout>
+      <div>
+        <h1 style={{ fontSize: "20px", marginBottom: "8px" }}>Prospects</h1>
       <p style={{ color: "#9ca3af", marginBottom: "16px" }}>
         Capture and track local businesses for your newsletter offer. Later
         we'll connect this to n8n scrapers and bulk import.
@@ -185,7 +187,8 @@ export default function Prospects() {
           </tbody>
         </table>
       )}
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 

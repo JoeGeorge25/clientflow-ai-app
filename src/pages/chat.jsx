@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AppLayout from "../components/AppLayout";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState([]);
@@ -16,7 +17,7 @@ export default function ChatPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: input,
-        routeKey: "general", // optional: can change per page
+        routeKey: "general",
       }),
     });
 
@@ -33,72 +34,74 @@ export default function ChatPage() {
   }
 
   return (
-    <div style={{ padding: "20px", maxWidth: "700px", margin: "0 auto" }}>
-      <h1>Architect AI</h1>
+    <AppLayout>
+      <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+        <h1>Architect AI</h1>
 
-      <div
-        style={{
-          border: "1px solid #333",
-          borderRadius: "8px",
-          padding: "10px",
-          height: "60vh",
-          overflowY: "auto",
-          marginBottom: "20px",
-          background: "#111",
-        }}
-      >
-        {messages.map((msg, i) => (
-          <div
-            key={i}
-            style={{
-              marginBottom: "12px",
-              textAlign: msg.role === "user" ? "right" : "left",
-            }}
-          >
-            <div
-              style={{
-                display: "inline-block",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                background: msg.role === "user" ? "#4a6cff" : "#333",
-                color: "white",
-              }}
-            >
-              {msg.content}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: "8px" }}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
+        <div
           style={{
-            flex: 1,
-            padding: "12px",
-            borderRadius: "6px",
-            border: "1px solid #444",
-            background: "#222",
-            color: "white",
-          }}
-        />
-
-        <button
-          onClick={sendMessage}
-          style={{
-            padding: "12px 18px",
-            background: "#4a6cff",
-            color: "white",
-            borderRadius: "6px",
-            border: "none",
+            border: "1px solid #333",
+            borderRadius: "8px",
+            padding: "10px",
+            height: "60vh",
+            overflowY: "auto",
+            marginBottom: "20px",
+            background: "#111",
           }}
         >
-          Send
-        </button>
+          {messages.map((msg, i) => (
+            <div
+              key={i}
+              style={{
+                marginBottom: "12px",
+                textAlign: msg.role === "user" ? "right" : "left",
+              }}
+            >
+              <div
+                style={{
+                  display: "inline-block",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  background: msg.role === "user" ? "#4a6cff" : "#333",
+                  color: "white",
+                }}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: "8px" }}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            style={{
+              flex: 1,
+              padding: "12px",
+              borderRadius: "6px",
+              border: "1px solid #444",
+              background: "#222",
+              color: "white",
+            }}
+          />
+
+          <button
+            onClick={sendMessage}
+            style={{
+              padding: "12px 18px",
+              background: "#4a6cff",
+              color: "white",
+              borderRadius: "6px",
+              border: "none",
+            }}
+          >
+            Send
+          </button>
+        </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
