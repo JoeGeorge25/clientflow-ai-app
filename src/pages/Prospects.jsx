@@ -23,14 +23,21 @@ export default function Prospects() {
     try {
       setLoading(true);
       setError(null);
+      console.log("[Prospects] Fetching GET /server/prospects");
       const response = await fetch("/server/prospects");
+      console.log("[Prospects] GET response status:", response.status);
+
       if (!response.ok) {
-        throw new Error("Failed to fetch prospects");
+        const errorText = await response.text();
+        console.error("[Prospects] GET failed:", response.status, errorText);
+        throw new Error(`Failed to fetch prospects: ${response.status}`);
       }
+
       const data = await response.json();
+      console.log("[Prospects] GET data:", data);
       setProspects(data.prospects || []);
     } catch (err) {
-      console.error("Prospects fetch error:", err);
+      console.error("[Prospects] Fetch error:", err);
       setError("Failed to load prospects. Please try again.");
     } finally {
       setLoading(false);
@@ -51,6 +58,7 @@ export default function Prospects() {
 
     try {
       setSubmitting(true);
+      console.log("[Prospects] Submitting POST /server/prospects", formData);
       const response = await fetch("/server/prospects", {
         method: "POST",
         headers: {
@@ -58,10 +66,16 @@ export default function Prospects() {
         },
         body: JSON.stringify(formData),
       });
+      console.log("[Prospects] POST response status:", response.status);
 
       if (!response.ok) {
-        throw new Error("Failed to create prospect");
+        const errorText = await response.text();
+        console.error("[Prospects] POST failed:", response.status, errorText);
+        throw new Error(`Failed to create prospect: ${response.status}`);
       }
+
+      const data = await response.json();
+      console.log("[Prospects] POST data:", data);
 
       setFormData({
         business_name: "",
@@ -74,7 +88,7 @@ export default function Prospects() {
 
       await fetchProspects();
     } catch (err) {
-      console.error("Prospects create error:", err);
+      console.error("[Prospects] Create error:", err);
       alert("Failed to add prospect. Please try again.");
     } finally {
       setSubmitting(false);
@@ -83,6 +97,7 @@ export default function Prospects() {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
+      console.log("[Prospects] Submitting PUT /server/prospects", { id, status: newStatus });
       const response = await fetch(`/server/prospects?id=${id}`, {
         method: "PUT",
         headers: {
@@ -90,17 +105,21 @@ export default function Prospects() {
         },
         body: JSON.stringify({ id, status: newStatus }),
       });
+      console.log("[Prospects] PUT response status:", response.status);
 
       if (!response.ok) {
-        throw new Error("Failed to update status");
+        const errorText = await response.text();
+        console.error("[Prospects] PUT failed:", response.status, errorText);
+        throw new Error(`Failed to update status: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log("[Prospects] PUT data:", data);
       setProspects((prev) =>
         prev.map((p) => (p.id === id ? data.prospect : p))
       );
     } catch (err) {
-      console.error("Prospects update error:", err);
+      console.error("[Prospects] Update error:", err);
       alert("Failed to update status. Please try again.");
     }
   };
