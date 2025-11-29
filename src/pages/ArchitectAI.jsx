@@ -1,57 +1,114 @@
+import { useState, useRef, useEffect } from "react";
+
 export default function ArchitectAI() {
+  const [messages, setMessages] = useState([
+    {
+      role: "assistant",
+      content:
+        "Hi, I'm Architect AI. Tell me about your local newsletter agency and I'll help you plan it.",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const userMessage = input.trim();
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/server/architectAiChat.js", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get response");
+      }
+
+      const data = await response.json();
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.reply },
+      ]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: "Sorry, something went wrong. Please try again.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <p className="text-slate-600 mt-1">
-          Plan and design your local newsletter agency system.
+          Ask questions and get guidance on building your local newsletter
+          agency system.
         </p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 flex flex-col items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
-          <svg
-            className="w-8 h-8 text-indigo-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col h-[70vh]">
+        <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+          {messages.map((msg, idx) => (
+            <div
+              key={idx}
+              className={`flex ${
+                msg.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              <div
+                className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                  msg.role === "user"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-100 text-slate-900"
+                }`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            disabled={loading}
+            className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:cursor-not-allowed text-sm"
+          />
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm disabled:bg-slate-300 disabled:cursor-not-allowed"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-            />
-          </svg>
-        </div>
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">
-          Chat Interface
-        </h3>
-        <p className="text-slate-600 text-center max-w-md">
-          The AI-powered chat interface will appear here. Ask questions about
-          your newsletter strategy, get advice on client acquisition, and plan
-          your agency workflow.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h4 className="font-semibold text-slate-900 mb-2">
-            Strategy Planning
-          </h4>
-          <p className="text-sm text-slate-600">
-            Get personalized advice on structuring your newsletter agency and
-            scaling your client base.
-          </p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <h4 className="font-semibold text-slate-900 mb-2">
-            Content Generation
-          </h4>
-          <p className="text-sm text-slate-600">
-            Generate newsletter content ideas, subject lines, and engaging copy
-            for your local business clients.
-          </p>
-        </div>
+            {loading ? "Sending..." : "Send"}
+          </button>
+        </form>
       </div>
     </div>
   );
