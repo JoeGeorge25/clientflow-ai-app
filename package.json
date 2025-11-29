@@ -2,10 +2,10 @@
   "name": "clientflow-ai",
   "type": "module",
   "scripts": {
-    "dev": "node server/index.js & vite",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node server/index.js"
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.86.0",
