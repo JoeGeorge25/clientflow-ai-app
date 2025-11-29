@@ -1,5 +1,4 @@
 import { useState } from "react";
-import AppLayout from "../components/AppLayout";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState([]);
@@ -34,21 +33,20 @@ export default function ChatPage() {
   }
 
   return (
-    <AppLayout>
-      <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-        <h1>Architect AI</h1>
+    <div style={{ maxWidth: "700px", margin: "0 auto" }}>
+      <h1>Architect AI</h1>
 
-        <div
-          style={{
-            border: "1px solid #333",
-            borderRadius: "8px",
-            padding: "10px",
-            height: "60vh",
-            overflowY: "auto",
-            marginBottom: "20px",
-            background: "#111",
-          }}
-        >
+      <div
+        style={{
+          border: "1px solid #333",
+          borderRadius: "8px",
+          padding: "10px",
+          height: "60vh",
+          overflowY: "auto",
+          marginBottom: "20px",
+          background: "#111",
+        }}
+      >
           {messages.map((msg, i) => (
             <div
               key={i}
@@ -101,7 +99,6 @@ export default function ChatPage() {
             Send
           </button>
         </div>
-      </div>
-    </AppLayout>
+    </div>
   );
 }

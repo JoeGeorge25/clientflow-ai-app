@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import AppLayout from "../components/AppLayout";
 
 const inputStyle = {
   padding: "8px 10px",
@@ -81,9 +80,8 @@ export default function Prospects() {
   }
 
   return (
-    <AppLayout>
-      <div>
-        <h1 style={{ fontSize: "20px", marginBottom: "6px" }}>Prospects</h1>
+    <div>
+      <h1 style={{ fontSize: "20px", marginBottom: "6px" }}>Prospects</h1>
         <p style={{ color: "#9ca3af", marginBottom: "18px", fontSize: "14px" }}>
           Store and manage local businesses for your newsletter offer. This is
           the starting point for building your $50k/month pipeline.
@@ -259,7 +257,6 @@ export default function Prospects() {
             </tbody>
           </table>
         )}
-      </div>
-    </AppLayout>
+    </div>
   );
 }

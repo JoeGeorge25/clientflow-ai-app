@@ -1,10 +1,10 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "react-router-dom";
 
 export default function AppLayout({ children }) {
-  const [location] = useLocation();
+  const location = useLocation();
 
   const navItems = [
-    { name: "Dashboard", path: "/" },
+    { name: "Dashboard", path: "/dashboard" },
     { name: "Architect AI", path: "/chat" },
     { name: "Prospects", path: "/prospects" },
     { name: "Newsletters", path: "/newsletters" },
@@ -33,9 +33,9 @@ export default function AppLayout({ children }) {
 
         <nav style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {navItems.map(item => {
-            const active = location === item.path;
+            const active = location.pathname === item.path;
             return (
-              <Link key={item.path} href={item.path}>
+              <Link key={item.path} to={item.path} style={{ textDecoration: "none" }}>
                 <div
                   style={{
                     padding: "10px 12px",
