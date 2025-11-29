@@ -2,6 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn("Supabase environment variables are missing");
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export default async function handler(req, res) {
@@ -18,8 +23,18 @@ export default async function handler(req, res) {
 
     if (req.method === "POST") {
       const body = req.body || {};
-
-      const { business_name, email, phone, niche, city, state, website } = body;
+      const {
+        business_name,
+        contact_name,
+        email,
+        phone,
+        niche,
+        city,
+        state,
+        website,
+        source,
+        notes,
+      } = body;
 
       if (!business_name) {
         return res.status(400).json({ error: "business_name is required" });
@@ -30,15 +45,16 @@ export default async function handler(req, res) {
         .insert([
           {
             business_name,
+            contact_name,
             email,
             phone,
             niche,
             city,
             state,
             website,
-            source: body.source || "manual",
+            source: source || "manual",
             status: "new",
-            notes: body.notes || "",
+            notes: notes || "",
           },
         ])
         .select()
@@ -46,6 +62,29 @@ export default async function handler(req, res) {
 
       if (error) throw error;
       return res.status(201).json({ prospect: data });
+    }
+
+    if (req.method === "PUT") {
+      const body = req.body || {};
+      const { id, status, notes } = body;
+
+      if (!id) {
+        return res.status(400).json({ error: "id is required for update" });
+      }
+
+      const { data, error } = await supabase
+        .from("prospects")
+        .update({
+          status,
+          notes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return res.status(200).json({ prospect: data });
     }
 
     return res.status(405).json({ error: "Method not allowed" });
