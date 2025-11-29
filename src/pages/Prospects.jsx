@@ -23,7 +23,7 @@ export default function Prospects() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/server/prospects.js");
+      const response = await fetch("/server/prospects");
       if (!response.ok) {
         throw new Error("Failed to fetch prospects");
       }
@@ -51,7 +51,7 @@ export default function Prospects() {
 
     try {
       setSubmitting(true);
-      const response = await fetch("/server/prospects.js", {
+      const response = await fetch("/server/prospects", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -83,7 +83,7 @@ export default function Prospects() {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
-      const response = await fetch("/server/prospects.js", {
+      const response = await fetch(`/server/prospects?id=${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
