@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 export default function Prospects() {
   const [prospects, setProspects] = useState([]);
@@ -23,19 +24,13 @@ export default function Prospects() {
     try {
       setLoading(true);
       setError(null);
-      console.log("[Prospects] Fetching GET /server/prospects");
-      const response = await fetch("/server/prospects");
-      console.log("[Prospects] GET response status:", response.status);
+      const { data, error } = await supabase
+        .from("prospects")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[Prospects] GET failed:", response.status, errorText);
-        throw new Error(`Failed to fetch prospects: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("[Prospects] GET data:", data);
-      setProspects(data.prospects || []);
+      if (error) throw error;
+      setProspects(data || []);
     } catch (err) {
       console.error("[Prospects] Fetch error:", err);
       setError("Failed to load prospects. Please try again.");
@@ -58,24 +53,11 @@ export default function Prospects() {
 
     try {
       setSubmitting(true);
-      console.log("[Prospects] Submitting POST /server/prospects", formData);
-      const response = await fetch("/server/prospects", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-      console.log("[Prospects] POST response status:", response.status);
+      const { error } = await supabase
+        .from("prospects")
+        .insert([{ ...formData, status: "new", source: "manual" }]);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[Prospects] POST failed:", response.status, errorText);
-        throw new Error(`Failed to create prospect: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("[Prospects] POST data:", data);
+      if (error) throw error;
 
       setFormData({
         business_name: "",
@@ -97,26 +79,15 @@ export default function Prospects() {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
-      console.log("[Prospects] Submitting PUT /server/prospects", { id, status: newStatus });
-      const response = await fetch(`/server/prospects?id=${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id, status: newStatus }),
-      });
-      console.log("[Prospects] PUT response status:", response.status);
+      const { error } = await supabase
+        .from("prospects")
+        .update({ status: newStatus })
+        .eq("id", id);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[Prospects] PUT failed:", response.status, errorText);
-        throw new Error(`Failed to update status: ${response.status}`);
-      }
+      if (error) throw error;
 
-      const data = await response.json();
-      console.log("[Prospects] PUT data:", data);
       setProspects((prev) =>
-        prev.map((p) => (p.id === id ? data.prospect : p))
+        prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
       );
     } catch (err) {
       console.error("[Prospects] Update error:", err);
