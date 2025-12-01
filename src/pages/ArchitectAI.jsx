@@ -30,16 +30,20 @@ export default function ArchitectAI() {
     setLoading(true);
 
     try {
-      const response = await fetch("/server/architectAiChat.js", {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/architect-ai-chat`;
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ message: userMessage }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get response");
+        const errorData = await response.json();
+        console.error("[Architect AI] Error response:", errorData);
+        throw new Error(errorData.error || "Failed to get response");
       }
 
       const data = await response.json();
@@ -48,6 +52,7 @@ export default function ArchitectAI() {
         { role: "assistant", content: data.reply },
       ]);
     } catch (error) {
+      console.error("[Architect AI] Error:", error);
       setMessages((prev) => [
         ...prev,
         {
