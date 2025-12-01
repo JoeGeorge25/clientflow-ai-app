@@ -8,17 +8,47 @@ export default function Newsletters() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(null);
 
+  const [templates, setTemplates] = useState([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [templateError, setTemplateError] = useState(null);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
   const [formData, setFormData] = useState({
     campaign_name: "",
     subject_line: "",
     send_datetime: "",
     audience_segment: "",
     status: "draft",
+    preview_text: "",
+    body_html: "",
+    body_text: "",
+    template_id: null,
   });
 
   useEffect(() => {
     fetchCampaigns();
+    fetchTemplates();
   }, []);
+
+  const fetchTemplates = async () => {
+    try {
+      setIsLoadingTemplates(true);
+      setTemplateError(null);
+      const { data, error } = await supabase
+        .from("newsletter_templates")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (err) {
+      console.error("[Templates] Fetch error:", err);
+      setTemplateError("Failed to load templates");
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
 
   const fetchCampaigns = async () => {
     try {
@@ -66,6 +96,10 @@ export default function Newsletters() {
         send_datetime: "",
         audience_segment: "",
         status: "draft",
+        preview_text: "",
+        body_html: "",
+        body_text: "",
+        template_id: null,
       });
 
       setShowForm(false);
@@ -120,6 +154,74 @@ export default function Newsletters() {
       default:
         return "bg-slate-100 text-slate-700";
     }
+  };
+
+  const handleUseTemplate = (template) => {
+    setFormData((prev) => ({
+      ...prev,
+      subject_line: template.subject_line,
+      preview_text: template.preview_text || "",
+      body_html: template.body_html,
+      body_text: template.body_text || "",
+      template_id: template.id,
+    }));
+    setShowTemplateModal(false);
+    setMessage({
+      type: "success",
+      text: `Template "${template.name}" applied to campaign`,
+    });
+    if (!showForm) {
+      setShowForm(true);
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!formData.subject_line.trim()) {
+      setMessage({
+        type: "error",
+        text: "Subject line is required to save as template",
+      });
+      return;
+    }
+
+    try {
+      setSavingTemplate(true);
+      setMessage(null);
+
+      const templateData = {
+        name: formData.campaign_name || formData.subject_line,
+        subject_line: formData.subject_line,
+        preview_text: formData.preview_text,
+        body_html: formData.body_html,
+        body_text: formData.body_text,
+      };
+
+      const { error } = await supabase
+        .from("newsletter_templates")
+        .insert([templateData]);
+
+      if (error) throw error;
+
+      setMessage({
+        type: "success",
+        text: "Template saved successfully!",
+      });
+      await fetchTemplates();
+    } catch (err) {
+      console.error("[Templates] Save error:", err);
+      setMessage({ type: "error", text: "Failed to save template" });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   return (
@@ -249,6 +351,48 @@ export default function Newsletters() {
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 />
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Preview Text
+                </label>
+                <input
+                  type="text"
+                  name="preview_text"
+                  value={formData.preview_text}
+                  onChange={handleInputChange}
+                  placeholder="e.g., Check out this month's featured content"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Email Content (HTML)
+                </label>
+                <textarea
+                  name="body_html"
+                  value={formData.body_html}
+                  onChange={handleInputChange}
+                  placeholder="Enter your email HTML content..."
+                  rows={6}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Plain Text Version
+                </label>
+                <textarea
+                  name="body_text"
+                  value={formData.body_text}
+                  onChange={handleInputChange}
+                  placeholder="Enter plain text version..."
+                  rows={4}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-mono"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -261,6 +405,14 @@ export default function Newsletters() {
               </button>
               <button
                 type="button"
+                onClick={handleSaveAsTemplate}
+                disabled={savingTemplate}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm disabled:bg-slate-300 disabled:cursor-not-allowed"
+              >
+                {savingTemplate ? "Saving..." : "Save as Template"}
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setShowForm(false);
                   setFormData({
@@ -269,6 +421,10 @@ export default function Newsletters() {
                     send_datetime: "",
                     audience_segment: "",
                     status: "draft",
+                    preview_text: "",
+                    body_html: "",
+                    body_text: "",
+                    template_id: null,
                   });
                 }}
                 className="px-6 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium text-sm"
@@ -379,7 +535,18 @@ export default function Newsletters() {
           <p className="text-sm text-slate-600 mb-4">
             Pre-built newsletter templates for local businesses
           </p>
-          <span className="text-xs text-slate-500">Coming soon</span>
+          <button
+            onClick={() => setShowTemplateModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+          >
+            Browse Templates
+          </button>
+          {templates.length > 0 && (
+            <p className="text-xs text-slate-500 mt-2">
+              {templates.length} template{templates.length !== 1 ? "s" : ""}{" "}
+              available
+            </p>
+          )}
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <h4 className="font-semibold text-slate-900 mb-2">Schedule Manager</h4>
@@ -396,6 +563,114 @@ export default function Newsletters() {
           <span className="text-xs text-slate-500">Coming soon</span>
         </div>
       </div>
+
+      {showTemplateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-slate-900">
+                Template Library
+              </h3>
+              <button
+                onClick={() => setShowTemplateModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {isLoadingTemplates ? (
+                <div className="text-center py-12">
+                  <div className="text-slate-500 text-sm">
+                    Loading templates...
+                  </div>
+                </div>
+              ) : templateError ? (
+                <div className="text-center py-12">
+                  <div className="text-red-600 text-sm">{templateError}</div>
+                </div>
+              ) : templates.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg
+                      className="w-8 h-8 text-slate-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-semibold text-slate-900 mb-2">
+                    No templates yet
+                  </h4>
+                  <p className="text-slate-600 text-sm max-w-md mx-auto">
+                    Create your first template by saving a campaign as a
+                    template using the "Save as Template" button.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {templates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="border border-slate-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h4 className="font-semibold text-slate-900">
+                          {template.name}
+                        </h4>
+                        {template.industry && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                            {template.industry}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-600 mb-2 line-clamp-2">
+                        <strong>Subject:</strong> {template.subject_line}
+                      </p>
+                      {template.preview_text && (
+                        <p className="text-xs text-slate-500 mb-3 line-clamp-2">
+                          {template.preview_text}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">
+                          Created {formatDate(template.created_at)}
+                        </span>
+                        <button
+                          onClick={() => handleUseTemplate(template)}
+                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-xs"
+                        >
+                          Use Template
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
