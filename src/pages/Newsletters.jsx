@@ -14,6 +14,19 @@ export default function Newsletters() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [savingTemplate, setSavingTemplate] = useState(false);
 
+  const [schedules, setSchedules] = useState([]);
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [submittingSchedule, setSubmittingSchedule] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState({
+    campaign_id: "",
+    send_at: "",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  });
+
+  const [analytics, setAnalytics] = useState({});
+  const [isLoadingAnalytics, setIsLoadingAnalytics] = useState(false);
+
   const [formData, setFormData] = useState({
     campaign_name: "",
     subject_line: "",
@@ -29,7 +42,14 @@ export default function Newsletters() {
   useEffect(() => {
     fetchCampaigns();
     fetchTemplates();
+    fetchSchedules();
   }, []);
+
+  useEffect(() => {
+    if (campaigns.length > 0) {
+      fetchAnalytics();
+    }
+  }, [campaigns]);
 
   const fetchTemplates = async () => {
     try {
@@ -47,6 +67,59 @@ export default function Newsletters() {
       setTemplateError("Failed to load templates");
     } finally {
       setIsLoadingTemplates(false);
+    }
+  };
+
+  const fetchSchedules = async () => {
+    try {
+      setIsLoadingSchedules(true);
+      const { data, error } = await supabase
+        .from("newsletter_schedules")
+        .select(`
+          *,
+          newsletter_campaigns (campaign_name)
+        `)
+        .order("send_at", { ascending: true });
+
+      if (error) throw error;
+      setSchedules(data || []);
+    } catch (err) {
+      console.error("[Schedules] Fetch error:", err);
+    } finally {
+      setIsLoadingSchedules(false);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      setIsLoadingAnalytics(true);
+      const { data: events, error } = await supabase
+        .from("newsletter_events")
+        .select("campaign_id, event_type");
+
+      if (error) throw error;
+
+      const analyticsMap = {};
+      campaigns.forEach((campaign) => {
+        const campaignEvents = events.filter((e) => e.campaign_id === campaign.id);
+        const sent = campaignEvents.filter((e) => e.event_type === "sent").length;
+        const opens = campaignEvents.filter((e) => e.event_type === "open").length;
+        const clicks = campaignEvents.filter((e) => e.event_type === "click").length;
+
+        analyticsMap[campaign.id] = {
+          sent,
+          opens,
+          clicks,
+          open_rate: sent > 0 ? ((opens / sent) * 100).toFixed(1) : 0,
+          click_rate: sent > 0 ? ((clicks / sent) * 100).toFixed(1) : 0,
+        };
+      });
+
+      setAnalytics(analyticsMap);
+    } catch (err) {
+      console.error("[Analytics] Fetch error:", err);
+    } finally {
+      setIsLoadingAnalytics(false);
     }
   };
 
@@ -222,6 +295,65 @@ export default function Newsletters() {
       day: "numeric",
       year: "numeric",
     });
+  };
+
+  const handleScheduleInputChange = (e) => {
+    const { name, value } = e.target;
+    setScheduleForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreateSchedule = async (e) => {
+    e.preventDefault();
+    if (!scheduleForm.campaign_id || !scheduleForm.send_at) {
+      setMessage({ type: "error", text: "Please select a campaign and send time" });
+      return;
+    }
+
+    try {
+      setSubmittingSchedule(true);
+      setMessage(null);
+
+      const { error } = await supabase
+        .from("newsletter_schedules")
+        .insert([{
+          campaign_id: scheduleForm.campaign_id,
+          send_at: scheduleForm.send_at,
+          timezone: scheduleForm.timezone,
+          status: "pending",
+        }]);
+
+      if (error) throw error;
+
+      setScheduleForm({
+        campaign_id: "",
+        send_at: "",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+
+      setShowScheduleModal(false);
+      setMessage({ type: "success", text: "Schedule created successfully!" });
+      await fetchSchedules();
+    } catch (err) {
+      console.error("[Schedules] Create error:", err);
+      setMessage({ type: "error", text: "Failed to create schedule" });
+    } finally {
+      setSubmittingSchedule(false);
+    }
+  };
+
+  const getScheduleStatusColor = (status) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-100 text-yellow-700";
+      case "queued":
+        return "bg-blue-100 text-blue-700";
+      case "sent":
+        return "bg-green-100 text-green-700";
+      case "failed":
+        return "bg-red-100 text-red-700";
+      default:
+        return "bg-slate-100 text-slate-700";
+    }
   };
 
   return (
@@ -486,6 +618,7 @@ export default function Newsletters() {
                   <th className="pb-3">Campaign</th>
                   <th className="pb-3">Send Date</th>
                   <th className="pb-3">Audience</th>
+                  <th className="pb-3">Analytics</th>
                   <th className="pb-3">Status</th>
                 </tr>
               </thead>
@@ -505,6 +638,23 @@ export default function Newsletters() {
                     </td>
                     <td className="py-3 text-slate-600">
                       {campaign.audience_segment || "—"}
+                    </td>
+                    <td className="py-3">
+                      {analytics[campaign.id] ? (
+                        <div className="text-xs space-y-0.5">
+                          <div className="text-slate-600">
+                            Sent: {analytics[campaign.id].sent}
+                          </div>
+                          <div className="text-slate-600">
+                            Opens: {analytics[campaign.id].opens} ({analytics[campaign.id].open_rate}%)
+                          </div>
+                          <div className="text-slate-600">
+                            Clicks: {analytics[campaign.id].clicks} ({analytics[campaign.id].click_rate}%)
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">No data</span>
+                      )}
                     </td>
                     <td className="py-3">
                       <select
@@ -553,14 +703,99 @@ export default function Newsletters() {
           <p className="text-sm text-slate-600 mb-4">
             Plan and automate your newsletter sending schedule
           </p>
-          <span className="text-xs text-slate-500">Coming soon</span>
+          <button
+            onClick={() => setShowScheduleModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm mb-4"
+          >
+            Add Schedule
+          </button>
+          {schedules.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {schedules.slice(0, 3).map((schedule) => (
+                <div
+                  key={schedule.id}
+                  className="text-xs p-2 bg-slate-50 rounded border border-slate-200"
+                >
+                  <div className="font-medium text-slate-900">
+                    {schedule.newsletter_campaigns?.campaign_name || "Campaign"}
+                  </div>
+                  <div className="text-slate-600 mt-1">
+                    {formatDateTime(schedule.send_at)}
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-slate-500">{schedule.timezone}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs ${getScheduleStatusColor(
+                        schedule.status
+                      )}`}
+                    >
+                      {schedule.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {schedules.length > 3 && (
+                <p className="text-xs text-slate-500 mt-2">
+                  +{schedules.length - 3} more schedules
+                </p>
+              )}
+            </div>
+          )}
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <h4 className="font-semibold text-slate-900 mb-2">Analytics</h4>
           <p className="text-sm text-slate-600 mb-4">
             Track opens, clicks, and engagement metrics
           </p>
-          <span className="text-xs text-slate-500">Coming soon</span>
+          {isLoadingAnalytics ? (
+            <div className="text-xs text-slate-500">Loading...</div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Total Campaigns</span>
+                <span className="text-lg font-semibold text-slate-900">
+                  {campaigns.length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Emails Sent</span>
+                <span className="text-lg font-semibold text-slate-900">
+                  {Object.values(analytics).reduce(
+                    (sum, a) => sum + a.sent,
+                    0
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Avg Open Rate</span>
+                <span className="text-lg font-semibold text-green-600">
+                  {Object.values(analytics).length > 0
+                    ? (
+                        Object.values(analytics).reduce(
+                          (sum, a) => sum + parseFloat(a.open_rate),
+                          0
+                        ) / Object.values(analytics).length
+                      ).toFixed(1)
+                    : 0}
+                  %
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Avg Click Rate</span>
+                <span className="text-lg font-semibold text-blue-600">
+                  {Object.values(analytics).length > 0
+                    ? (
+                        Object.values(analytics).reduce(
+                          (sum, a) => sum + parseFloat(a.click_rate),
+                          0
+                        ) / Object.values(analytics).length
+                      ).toFixed(1)
+                    : 0}
+                  %
+                </span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -668,6 +903,107 @@ export default function Newsletters() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {showScheduleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-slate-900">
+                Add Schedule
+              </h3>
+              <button
+                onClick={() => setShowScheduleModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSchedule} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Campaign *
+                  </label>
+                  <select
+                    name="campaign_id"
+                    value={scheduleForm.campaign_id}
+                    onChange={handleScheduleInputChange}
+                    required
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  >
+                    <option value="">Select a campaign</option>
+                    {campaigns.map((campaign) => (
+                      <option key={campaign.id} value={campaign.id}>
+                        {campaign.campaign_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Send Date & Time *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="send_at"
+                    value={scheduleForm.send_at}
+                    onChange={handleScheduleInputChange}
+                    required
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Timezone
+                  </label>
+                  <input
+                    type="text"
+                    name="timezone"
+                    value={scheduleForm.timezone}
+                    onChange={handleScheduleInputChange}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Defaults to your browser timezone
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="submit"
+                  disabled={submittingSchedule}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm disabled:bg-slate-300 disabled:cursor-not-allowed"
+                >
+                  {submittingSchedule ? "Creating..." : "Create Schedule"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowScheduleModal(false)}
+                  className="px-6 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
